@@ -324,7 +324,11 @@ def convert_feature_extractor(feature_extractor, tiny_config):
         kwargs["size"] = tiny_config.image_size
         kwargs["crop_size"] = tiny_config.image_size
         to_convert = True
-    elif hasattr(tiny_config, "vision_config") and tiny_config.vision_config is not None and hasattr(tiny_config.vision_config, "image_size"):
+    elif (
+        hasattr(tiny_config, "vision_config")
+        and tiny_config.vision_config is not None
+        and hasattr(tiny_config.vision_config, "image_size")
+    ):
         kwargs["size"] = tiny_config.vision_config.image_size
         kwargs["crop_size"] = tiny_config.vision_config.image_size
         to_convert = True
@@ -480,30 +484,116 @@ def build_composite_models(config_class, output_dir):
 
     import tempfile
 
+    from transformers import (
+        BertConfig,
+        BertModel,
+        BertLMHeadModel,
+        EncoderDecoderModel,
+        TFEncoderDecoderModel,
+        BertTokenizer,
+        BertTokenizerFast,
+        GPT2TokenizerFast,
+        GPT2Tokenizer,
+        ViTFeatureExtractor,
+        ViTModel,
+        GPT2LMHeadModel,
+        VisionEncoderDecoderModel,
+        SpeechEncoderDecoderModel,
+        TFVisionEncoderDecoderModel,
+        ViTConfig,
+        GPT2Config,
+        Wav2Vec2Config,
+        Wav2Vec2Processor,
+        Wav2Vec2Model,
+    )
+
+    # These will be removed at the end if they are empty
+    result["error"] = None
+    result["warnings"] = []
+
+    if config_class.model_type == "encoder-decoder":
+        encoder_config_class = BertConfig
+        decoder_config_class = BertConfig
+        encoder_processor = (BertTokenizerFast, BertTokenizer)
+        decoder_processor = (BertTokenizerFast, BertTokenizer)
+        encoder_class = BertModel
+        decoder_class = BertLMHeadModel
+        model_class = EncoderDecoderModel
+        tf_model_class = TFEncoderDecoderModel
+    elif config_class.model_type == "vision-encoder-decoder":
+        encoder_config_class = ViTConfig
+        decoder_config_class = GPT2Config
+        encoder_processor = (ViTFeatureExtractor,)
+        decoder_processor = (GPT2TokenizerFast, GPT2Tokenizer)
+        encoder_class = ViTModel
+        decoder_class = GPT2LMHeadModel
+        model_class = VisionEncoderDecoderModel
+        tf_model_class = TFVisionEncoderDecoderModel
+    elif config_class.model_type == "speech-encoder-decoder":
+        encoder_config_class = Wav2Vec2Config
+        decoder_config_class = BertConfig
+        encoder_processor = (Wav2Vec2Processor,)
+        decoder_processor = (BertTokenizerFast, BertTokenizer)
+        encoder_class = Wav2Vec2Model
+        decoder_class = BertLMHeadModel
+        model_class = SpeechEncoderDecoderModel
+        tf_model_class = None
+
     with tempfile.TemporaryDirectory() as tmpdir:
 
-        from transformers import BertConfig, BertModel, BertLMHeadModel, EncoderDecoderModel, TFEncoderDecoderModel
+        try:
+            # build encoder
+            models_to_create = {"processor": encoder_processor, "pytorch": (encoder_class,), "tensorflow": []}
+            encoder_output_dir = os.path.join(tmpdir, "encoder")
+            build(encoder_config_class, models_to_create, encoder_output_dir)
 
-        config_class = BertConfig
-        models_to_create = {c: {"pytorch": [BertModel]}}
-        encoder_output_dir = os.path.join(tmpdir, "encoder")
-        build(config_class, models_to_create, encoder_output_dir)
+            # build decoder
+            models_to_create = {"processor": decoder_processor, "pytorch": (decoder_class,), "tensorflow": []}
+            decoder_output_dir = os.path.join(tmpdir, "decoder")
+            build(decoder_config_class, models_to_create, decoder_output_dir)
 
-        config_class = BertConfig
-        models_to_create = {c: {"pytorch": [BertLMHeadModel]}}
-        decoder_output_dir = os.path.join(tmpdir, "decoder")
-        build(config_class, models_to_create, decoder_output_dir)
+            # build encoder-decoder
+            encoder_path = os.path.join(encoder_output_dir, encoder_class.__name__)
+            decoder_path = os.path.join(decoder_output_dir, decoder_class.__name__)
+            model = model_class.from_encoder_decoder_pretrained(encoder_path, decoder_path)
 
-        encoder = BertModel.from_pretrained(os.path.join(encoder_output_dir, BertModel.__name__))
-        decoder = BertLMHeadModel.from_pretrained(os.path.join(decoder_output_dir, BertLMHeadModel.__name__))
+            model_path = os.path.join(output_dir, model_class.__name__)
+            model.save_pretrained(model_path)
 
-        model = EncoderDecoderModel.from_encoder_decoder_pretrained(encoder, decoder)
-        model.save_pretrained(os.path.join(output_dir, EncoderDecoderModel.__name__))
+            if tf_model_class is not None:
+                model = tf_model_class.from_pretrained(model_path, from_pt=True)
+                model.save_pretrained(model_path)
 
-        model = TFEncoderDecoderModel.from_pretrained()
-        model.save_pretrained(os.path.join(output_dir, EncoderDecoderModel.__name__))
+            # copy the processors
+            encoder_processor_path = os.path.join(encoder_output_dir, "processors")
+            decoder_processor_path = os.path.join(decoder_output_dir, "processors")
+            if os.path.isdir(encoder_processor_path):
+                shutil.copytree(encoder_processor_path, model_path, dirs_exist_ok=True)
+            if os.path.isdir(decoder_processor_path):
+                shutil.copytree(decoder_processor_path, model_path, dirs_exist_ok=True)
 
-        return {}
+            # fill `result`
+            result["processor"] = tuple(set([x.__name__ for x in encoder_processor + decoder_processor]))
+
+            result["pytorch"] = {model_class.__name__: {"model": model_class.__name__, "checkpoint": model_path}}
+            print(f"{model_class.__name__}: OK")
+
+            result["tensorflow"] = {}
+            if tf_model_class is not None:
+                result["tensorflow"] = {
+                    tf_model_class.__name__: {"model": tf_model_class.__name__, "checkpoint": model_path}
+                }
+                print(f"{tf_model_class.__name__}: OK")
+
+        except Exception as e:
+            result["error"] = f"Failed to build models for {config_class.__name__}: {e}"
+
+    if not result["error"]:
+        del result["error"]
+    if not result["warnings"]:
+        del result["warnings"]
+
+    return result
 
 
 def build(config_class, models_to_create, output_dir):
@@ -583,7 +673,11 @@ def build(config_class, models_to_create, output_dir):
         if hasattr(tiny_config, k):
             setattr(tiny_config, k, v)
         # currently only `vocab_size` is involved, so let's just look `text_config`
-        elif hasattr(tiny_config, "text_config") and tiny_config.text_config is not None and hasattr(tiny_config.text_config, k):
+        elif (
+            hasattr(tiny_config, "text_config")
+            and tiny_config.text_config is not None
+            and hasattr(tiny_config.text_config, k)
+        ):
             setattr(tiny_config.text_config, k, v)
 
     if result["warnings"]:
