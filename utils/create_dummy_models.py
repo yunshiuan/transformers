@@ -476,6 +476,36 @@ def fill_result_with_error(result, error, models_to_create):
                 result[framework][model_arch.__name__] = {"model": None, "checkpoint": None, "error": error}
 
 
+def build_composite_models(config_class, output_dir):
+
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+
+        from transformers import BertConfig, BertModel, BertLMHeadModel, EncoderDecoderModel, TFEncoderDecoderModel
+
+        config_class = BertConfig
+        models_to_create = {c: {"pytorch": [BertModel]}}
+        encoder_output_dir = os.path.join(tmpdir, "encoder")
+        build(config_class, models_to_create, encoder_output_dir)
+
+        config_class = BertConfig
+        models_to_create = {c: {"pytorch": [BertLMHeadModel]}}
+        decoder_output_dir = os.path.join(tmpdir, "decoder")
+        build(config_class, models_to_create, decoder_output_dir)
+
+        encoder = BertModel.from_pretrained(os.path.join(encoder_output_dir, BertModel.__name__))
+        decoder = BertLMHeadModel.from_pretrained(os.path.join(decoder_output_dir, BertLMHeadModel.__name__))
+
+        model = EncoderDecoderModel.from_encoder_decoder_pretrained(encoder, decoder)
+        model.save_pretrained(os.path.join(output_dir, EncoderDecoderModel.__name__))
+
+        model = TFEncoderDecoderModel.from_pretrained()
+        model.save_pretrained(os.path.join(output_dir, EncoderDecoderModel.__name__))
+
+        return {}
+
+
 def build(config_class, models_to_create, output_dir):
     """Create all models for a certain model type.
 
@@ -489,6 +519,9 @@ def build(config_class, models_to_create, output_dir):
             The directory to save all the checkpoints. Each model architecture will be saved in a subdirectory under
             it. Models in different frameworks with the same architecture will be saved in the same subdirectory.
     """
+
+    if config_class.model_type in ["encoder-decoder", "vision-encoder-decoder", "speech-encoder-decoder"]:
+        return build_composite_models(config_class, output_dir)
 
     result = {k: {} for k in models_to_create}
 
