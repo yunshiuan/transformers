@@ -508,8 +508,7 @@ def build_composite_models(config_class, output_dir):
     )
 
     # These will be removed at the end if they are empty
-    result["error"] = None
-    result["warnings"] = []
+    result = {"error": None, "warnings": []}
 
     if config_class.model_type == "encoder-decoder":
         encoder_config_class = BertConfig
