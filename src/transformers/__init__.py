@@ -673,7 +673,6 @@ except OptionalDependencyNotAvailable:
         name for name in dir(dummy_speech_objects) if not name.startswith("_")
     ]
 else:
-    _import_structure["models.audio_spectrogram_transformer"].append("AudioSpectrogramTransformerFeatureExtractor")
     _import_structure["models.mctct"].append("MCTCTFeatureExtractor")
     _import_structure["models.speech_to_text"].append("Speech2TextFeatureExtractor")
 
@@ -735,14 +734,13 @@ else:
     _import_structure["models.mobilenet_v2"].extend(["MobileNetV2FeatureExtractor", "MobileNetV2ImageProcessor"])
     _import_structure["models.mobilevit"].extend(["MobileViTFeatureExtractor", "MobileViTImageProcessor"])
     _import_structure["models.owlvit"].append("OwlViTFeatureExtractor")
-    _import_structure["models.perceiver"].append("PerceiverFeatureExtractor")
-    _import_structure["models.poolformer"].append("PoolFormerFeatureExtractor")
-    _import_structure["models.segformer"].append("SegformerFeatureExtractor")
-    _import_structure["models.videomae"].append("VideoMAEFeatureExtractor")
-    _import_structure["models.vilt"].append("ViltFeatureExtractor")
-    _import_structure["models.vilt"].append("ViltProcessor")
-    _import_structure["models.vit"].append("ViTFeatureExtractor")
-    _import_structure["models.yolos"].append("YolosFeatureExtractor")
+    _import_structure["models.perceiver"].extend(["PerceiverFeatureExtractor", "PerceiverImageProcessor"])
+    _import_structure["models.poolformer"].extend(["PoolFormerFeatureExtractor", "PoolFormerImageProcessor"])
+    _import_structure["models.segformer"].extend(["SegformerFeatureExtractor", "SegformerImageProcessor"])
+    _import_structure["models.videomae"].extend(["VideoMAEFeatureExtractor", "VideoMAEImageProcessor"])
+    _import_structure["models.vilt"].extend(["ViltFeatureExtractor", "ViltImageProcessor", "ViltProcessor"])
+    _import_structure["models.vit"].extend(["ViTFeatureExtractor", "ViTImageProcessor"])
+    _import_structure["models.yolos"].extend(["YolosFeatureExtractor"])
 
 # Timm-backed objects
 try:
@@ -854,29 +852,13 @@ else:
 
     # PyTorch models structure
 
-    _import_structure["models.roc_bert"].extend(
+    _import_structure["models.audio_spectrogram_transformer"].extend(
         [
-            "ROC_BERT_PRETRAINED_MODEL_ARCHIVE_LIST",
-            "RoCBertForMaskedLM",
-            "RoCBertForCausalLM",
-            "RoCBertForMultipleChoice",
-            "RoCBertForQuestionAnswering",
-            "RoCBertForSequenceClassification",
-            "RoCBertForTokenClassification",
-            "RoCBertLayer",
-            "RoCBertModel",
-            "RoCBertForPreTraining",
-            "RoCBertPreTrainedModel",
-            "load_tf_weights_in_roc_bert",
-        ]
-    )
-
-    _import_structure["models.time_series_transformer"].extend(
-        [
-            "TIME_SERIES_TRANSFORMER_PRETRAINED_MODEL_ARCHIVE_LIST",
-            "TimeSeriesTransformerForPrediction",
-            "TimeSeriesTransformerModel",
-            "TimeSeriesTransformerPreTrainedModel",
+            "AUDIO_SPECTROGRAM_TRANSFORMER_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "AudioSpectrogramTransformerForSequenceClassification",
+            "AudioSpectrogramTransformerModel",
+            "AudioSpectrogramTransformerPreTrainedModel",
+            "AudioSpectrogramTransformerFeatureExtractor",
         ]
     )
     _import_structure["models.albert"].extend(
@@ -1898,6 +1880,22 @@ else:
             "RobertaPreTrainedModel",
         ]
     )
+    _import_structure["models.roc_bert"].extend(
+        [
+            "ROC_BERT_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "RoCBertForMaskedLM",
+            "RoCBertForCausalLM",
+            "RoCBertForMultipleChoice",
+            "RoCBertForQuestionAnswering",
+            "RoCBertForSequenceClassification",
+            "RoCBertForTokenClassification",
+            "RoCBertLayer",
+            "RoCBertModel",
+            "RoCBertForPreTraining",
+            "RoCBertPreTrainedModel",
+            "load_tf_weights_in_roc_bert",
+        ]
+    )
     _import_structure["models.lilt"].extend(
         [
             "LILT_PRETRAINED_MODEL_ARCHIVE_LIST",
@@ -2022,6 +2020,14 @@ else:
             "load_tf_weights_in_tapas",
         ]
     )
+    _import_structure["models.time_series_transformer"].extend(
+        [
+            "TIME_SERIES_TRANSFORMER_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "TimeSeriesTransformerForPrediction",
+            "TimeSeriesTransformerModel",
+            "TimeSeriesTransformerPreTrainedModel",
+        ]
+    )
     _import_structure["models.t5"].extend(
         [
             "T5_PRETRAINED_MODEL_ARCHIVE_LIST",
@@ -2129,14 +2135,6 @@ else:
             "ViTForMaskedImageModeling",
             "ViTModel",
             "ViTPreTrainedModel",
-        ]
-    )
-    _import_structure["models.audio_spectrogram_transformer"].extend(
-        [
-            "AUDIO_SPECTROGRAM_TRANSFORMER_PRETRAINED_MODEL_ARCHIVE_LIST",
-            "AudioSpectrogramTransformerModel",
-            "AudioSpectrogramTransformerPreTrainedModel",
-            "AudioSpectrogramTransformerForSequenceClassification",
         ]
     )
     _import_structure["models.vit_mae"].extend(
@@ -3775,7 +3773,6 @@ if TYPE_CHECKING:
     except OptionalDependencyNotAvailable:
         from .utils.dummy_speech_objects import *
     else:
-        from .models.audio_spectrogram_transformer import AudioSpectrogramTransformerFeatureExtractor
         from .models.mctct import MCTCTFeatureExtractor
         from .models.speech_to_text import Speech2TextFeatureExtractor
 
@@ -3804,8 +3801,8 @@ if TYPE_CHECKING:
         from .image_processing_utils import ImageProcessingMixin
         from .image_transforms import rescale, resize, to_pil_image
         from .image_utils import ImageFeatureExtractionMixin
-        from .models.beit import BeitFeatureExtractor
-        from .models.clip import CLIPFeatureExtractor
+        from .models.beit import BeitFeatureExtractor, BeitImageProcessor
+        from .models.clip import CLIPFeatureExtractor, CLIPImageProcessor
         from .models.conditional_detr import ConditionalDetrFeatureExtractor
         from .models.convnext import ConvNextFeatureExtractor, ConvNextImageProcessor
         from .models.deformable_detr import DeformableDetrFeatureExtractor
@@ -3823,12 +3820,12 @@ if TYPE_CHECKING:
         from .models.mobilenet_v2 import MobileNetV2FeatureExtractor, MobileNetV2ImageProcessor
         from .models.mobilevit import MobileViTFeatureExtractor, MobileViTImageProcessor
         from .models.owlvit import OwlViTFeatureExtractor
-        from .models.perceiver import PerceiverFeatureExtractor
-        from .models.poolformer import PoolFormerFeatureExtractor
-        from .models.segformer import SegformerFeatureExtractor
-        from .models.videomae import VideoMAEFeatureExtractor
-        from .models.vilt import ViltFeatureExtractor, ViltProcessor
-        from .models.vit import ViTFeatureExtractor
+        from .models.perceiver import PerceiverFeatureExtractor, PerceiverImageProcessor
+        from .models.poolformer import PoolFormerFeatureExtractor, PoolFormerImageProcessor
+        from .models.segformer import SegformerFeatureExtractor, SegformerImageProcessor
+        from .models.videomae import VideoMAEFeatureExtractor, VideoMAEImageProcessor
+        from .models.vilt import ViltFeatureExtractor, ViltImageProcessor, ViltProcessor
+        from .models.vit import ViTFeatureExtractor, ViTImageProcessor
         from .models.yolos import YolosFeatureExtractor
 
     # Modeling
@@ -3917,8 +3914,6 @@ if TYPE_CHECKING:
             top_k_top_p_filtering,
         )
         from .modeling_utils import PreTrainedModel
-
-        # PyTorch model imports
         from .models.albert import (
             ALBERT_PRETRAINED_MODEL_ARCHIVE_LIST,
             AlbertForMaskedLM,
@@ -3931,8 +3926,11 @@ if TYPE_CHECKING:
             AlbertPreTrainedModel,
             load_tf_weights_in_albert,
         )
+
+        # PyTorch model imports
         from .models.audio_spectrogram_transformer import (
             AUDIO_SPECTROGRAM_TRANSFORMER_PRETRAINED_MODEL_ARCHIVE_LIST,
+            AudioSpectrogramTransformerFeatureExtractor,
             AudioSpectrogramTransformerForSequenceClassification,
             AudioSpectrogramTransformerModel,
             AudioSpectrogramTransformerPreTrainedModel,
