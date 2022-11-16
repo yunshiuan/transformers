@@ -405,6 +405,8 @@ def get_task(model: str, use_auth_token: Optional[str] = None) -> str:
         info = model_info(model, token=use_auth_token)
     except Exception as e:
         raise RuntimeError(f"Instantiating a pipeline without a task set raised an error: {e}")
+    import time
+    time.sleep(1)
     if not info.pipeline_tag:
         raise RuntimeError(
             f"The model {model} does not seem to have a correct `pipeline_tag` set to infer the task automatically"

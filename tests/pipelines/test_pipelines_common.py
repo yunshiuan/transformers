@@ -234,6 +234,7 @@ class PipelineTestCaseMeta(type):
 
             return test
 
+        import time
         for prefix, key in [("pt", "model_mapping"), ("tf", "tf_model_mapping")]:
             mapping = dct.get(key, {})
             if mapping:
@@ -253,12 +254,14 @@ class PipelineTestCaseMeta(type):
                             _ = HfApi().model_info(tiny_model_repo_id)
                         except huggingface_hub.utils.RepositoryNotFoundError:
                             continue
+                        time.sleep(1)
 
                         tokenizer = None
                         try:
                             tokenizer = AutoTokenizer.from_pretrained(tiny_model_repo_id)
                         except:
                             pass
+                        time.sleep(1)
 
                         processor = None
                         for auto_class in [AutoImageProcessor, AutoFeatureExtractor]:
@@ -267,6 +270,7 @@ class PipelineTestCaseMeta(type):
                                 break
                             except:
                                 continue
+                        time.sleep(1)
 
                         if tokenizer is not None or processor is not None:
                             continue
@@ -279,6 +283,7 @@ class PipelineTestCaseMeta(type):
                             config = model.config
                         except:
                             continue
+                        time.sleep(1)
 
                         if not isinstance(config, config_class):
                             raise ValueError(f"`config` should be an instance of `{config_class.__name__}`, got `{config.__class__.__name__}` instead.")
