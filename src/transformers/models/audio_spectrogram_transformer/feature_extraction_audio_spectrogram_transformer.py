@@ -121,7 +121,7 @@ class ASTFeatureExtractor(SequenceFeatureExtractor):
     def __call__(
         self,
         raw_speech: Union[np.ndarray, List[float], List[np.ndarray], List[List[float]]],
-        max_length: int = 1024,
+        max_length: int = 24,
         sampling_rate: Optional[int] = None,
         return_tensors: Optional[Union[str, TensorType]] = None,
         **kwargs

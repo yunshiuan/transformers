@@ -79,14 +79,19 @@ class ASTEmbeddings(nn.Module):
         return frequency_out_dimension, time_out_dimension
 
     def forward(self, input_values: torch.Tensor) -> torch.Tensor:
+
+        import pdb; pdb.set_trace()
         batch_size = input_values.shape[0]
         embeddings = self.patch_embeddings(input_values)
 
         cls_tokens = self.cls_token.expand(batch_size, -1, -1)
         distillation_tokens = self.distillation_token.expand(batch_size, -1, -1)
         embeddings = torch.cat((cls_tokens, distillation_tokens, embeddings), dim=1)
+        import pdb; pdb.set_trace()
         embeddings = embeddings + self.position_embeddings
         embeddings = self.dropout(embeddings)
+        import pdb; pdb.set_trace()
+
 
         return embeddings
 

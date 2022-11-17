@@ -142,6 +142,7 @@ def get_tiny_tokenizer_from_checkpoint(checkpoint):
 
 
 def get_tiny_feature_extractor_from_checkpoint(checkpoint, tiny_config, feature_extractor_class):
+
     try:
         feature_extractor = AutoFeatureExtractor.from_pretrained(checkpoint)
     except Exception:
@@ -160,6 +161,8 @@ def get_tiny_feature_extractor_from_checkpoint(checkpoint, tiny_config, feature_
         feature_extractor = feature_extractor.__class__(
             feature_size=tiny_config.input_feat_per_channel, num_mel_bins=tiny_config.input_feat_per_channel
         )
+
+    feature_extractor.num_mel_bins = 16
     return feature_extractor
 
 
@@ -237,6 +240,7 @@ class PipelineTestCaseMeta(type):
                     # The test can disable itself, but it should be very marginal
                     # Concerns: Wav2Vec2ForCTC without tokenizer test (FastTokenizer don't exist)
                     return
+
                 self.run_pipeline_test(pipeline, examples)
 
                 def run_batch_test(pipeline, examples):
