@@ -205,6 +205,9 @@ class ConfigTester(object):
             errors = "\n".join([f"- {v[0]}: got {v[1]} instead of {v[2]}" for v in wrong_values])
             raise ValueError(f"The following keys were not properly set in the config:\n{errors}")
 
+    def check_config_attributes_being_used(self):
+        pass
+
     def run_common_tests(self):
         self.create_and_test_config_common_properties()
         self.create_and_test_config_to_json_string()
@@ -214,6 +217,7 @@ class ConfigTester(object):
         self.create_and_test_config_with_num_labels()
         self.check_config_can_be_init_without_params()
         self.check_config_arguments_init()
+        self.check_config_attributes_being_used()
 
 
 @is_staging_test
