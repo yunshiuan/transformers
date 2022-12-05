@@ -247,7 +247,7 @@ class ObjectDetectionPipelineTests(unittest.TestCase, metaclass=PipelineTestCase
     @require_torch
     @slow
     def test_layoutlm(self):
-        model_id = "philschmid/layoutlm-funsd"
+        model_id = "Narsil/layoutlm-funsd"
         threshold = 0.998
 
         object_detector = pipeline("object-detection", model=model_id, threshold=threshold)
