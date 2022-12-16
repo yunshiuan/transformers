@@ -24,7 +24,6 @@ env:
 jobs:
   setup:
     name: Setup
-    needs: check_runners
     strategy:
       matrix:
         machine_type: [single-gpu]
