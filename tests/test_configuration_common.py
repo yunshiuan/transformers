@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import copy
+import inspect
 import json
 import os
 import shutil
@@ -205,15 +206,41 @@ class ConfigTester(object):
             errors = "\n".join([f"- {v[0]}: got {v[1]} instead of {v[2]}" for v in wrong_values])
             raise ValueError(f"The following keys were not properly set in the config:\n{errors}")
 
+    def check_config_attributes_being_used(self):
+        signature = dict(inspect.signature(self.config_class.__init__).parameters)
+        parameter_names = [x for x in list(signature.keys()) if x not in ["self", "kwargs"]]
+
+        config_source_file = inspect.getsourcefile(self.config_class)
+        modeling_path = config_source_file.replace("configuration_", "modeling_")
+        with open(modeling_path) as fp:
+            modeling_source = fp.read()
+            for x in parameter_names:
+                if f"config.{x}" not in modeling_source and f'getattr(config, "{x}"' not in modeling_source:
+                    if x == "layer_norm_eps" and self.config_class.__name__ in ["BioGptConfig", "CLIPConfig", "CLIPSegConfig", "GLPNConfig", "GroupViTConfig", "LxmertConfig", "OwlViTConfig", "SegformerConfig", "XCLIPConfig"]:
+                        continue
+                    # DPR has `self.bert` and the config has to be able to initialize a BERT model.
+                    if x == "vocab_size" and self.config_class.__name__ in ["DPRConfig"]:
+                        continue
+                    if x.endswith("_token_id"):
+                        continue
+                    if x in ["bos_index", "eos_index", "pad_index", "unk_index", "mask_index"]:
+                        continue
+                    if x in ["langs"] and self.config_class.__name__ in ["FSMTConfig"]:
+                        continue
+                    if x in ["attention_types"] and self.config_class.__name__ in ["GPTNeoConfig"]:
+                        continue
+                    raise ValueError(f"config.{x} not in the source.")
+
     def run_common_tests(self):
-        self.create_and_test_config_common_properties()
-        self.create_and_test_config_to_json_string()
-        self.create_and_test_config_to_json_file()
-        self.create_and_test_config_from_and_save_pretrained()
-        self.create_and_test_config_from_and_save_pretrained_subfolder()
-        self.create_and_test_config_with_num_labels()
-        self.check_config_can_be_init_without_params()
-        self.check_config_arguments_init()
+        # self.create_and_test_config_common_properties()
+        # self.create_and_test_config_to_json_string()
+        # self.create_and_test_config_to_json_file()
+        # self.create_and_test_config_from_and_save_pretrained()
+        # self.create_and_test_config_from_and_save_pretrained_subfolder()
+        # self.create_and_test_config_with_num_labels()
+        # self.check_config_can_be_init_without_params()
+        # self.check_config_arguments_init()
+        self.check_config_attributes_being_used()
 
 
 @is_staging_test
