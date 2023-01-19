@@ -207,7 +207,6 @@ torch_job = CircleCIJob(
         "pip install .[sklearn,torch,testing,sentencepiece,torch-speech,vision,timm]",
         "pip install git+https://github.com/huggingface/accelerate",
     ],
-    parallelism=2,
     pytest_num_workers=3,
 )
 
