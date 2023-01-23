@@ -3,7 +3,7 @@ name: Doctests
 on:
   push:
     branches:
-      - doctest*
+      - models_docstring
   repository_dispatch:
   schedule:
     - cron: "0 2 * * *"
