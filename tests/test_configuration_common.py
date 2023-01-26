@@ -245,7 +245,7 @@ class ConfigTester(object):
                     case_allowed = True
 
         if not (attribute_used or case_allowed):
-            raise ValueError(f"config.{attribute_used} (or its variant names) is/are not used in the modeling files.")
+            raise ValueError(f"config.{attributes[0]} (or its variant names) is/are not used in the modeling files.")
 
     def check_config_attributes_being_used(self):
         signature = dict(inspect.signature(self.config_class.__init__).parameters)
