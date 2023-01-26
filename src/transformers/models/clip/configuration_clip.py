@@ -68,8 +68,6 @@ class CLIPTextConfig(PretrainedConfig):
             defaults to 1e-5): The epsilon used by the layer normalization layers.
         attention_dropout (`float`, *optional*, defaults to 0.0):
             The dropout ratio for the attention probabilities.
-        dropout (`float`, *optional*, defaults to 0.0):
-            The dropout probabilitiy for all fully connected layers in the embeddings, encoder, and pooler.
         initializer_range (`float`, *optional*, defaults to 0.02):
             The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
         initializer_factor (`float`, *optional*, defaults to 1):
@@ -103,7 +101,6 @@ class CLIPTextConfig(PretrainedConfig):
         max_position_embeddings=77,
         hidden_act="quick_gelu",
         layer_norm_eps=0.00001,
-        dropout=0.0,
         attention_dropout=0.0,
         initializer_range=0.02,
         initializer_factor=1.0,
@@ -118,7 +115,6 @@ class CLIPTextConfig(PretrainedConfig):
         self.hidden_size = hidden_size
         self.intermediate_size = intermediate_size
         self.projection_dim = projection_dim
-        self.dropout = dropout
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
         self.max_position_embeddings = max_position_embeddings
@@ -173,8 +169,6 @@ class CLIPVisionConfig(PretrainedConfig):
             The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
             `"relu"`, `"selu"` and `"gelu_new"` ``"quick_gelu"` are supported. layer_norm_eps (`float`, *optional*,
             defaults to 1e-5): The epsilon used by the layer normalization layers.
-        dropout (`float`, *optional*, defaults to 0.0):
-            The dropout probabilitiy for all fully connected layers in the embeddings, encoder, and pooler.
         attention_dropout (`float`, *optional*, defaults to 0.0):
             The dropout ratio for the attention probabilities.
         initializer_range (`float`, *optional*, defaults to 0.02):
@@ -212,7 +206,6 @@ class CLIPVisionConfig(PretrainedConfig):
         patch_size=32,
         hidden_act="quick_gelu",
         layer_norm_eps=0.00001,
-        dropout=0.0,
         attention_dropout=0.0,
         initializer_range=0.02,
         initializer_factor=1.0,
@@ -223,7 +216,6 @@ class CLIPVisionConfig(PretrainedConfig):
         self.hidden_size = hidden_size
         self.intermediate_size = intermediate_size
         self.projection_dim = projection_dim
-        self.dropout = dropout
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
         self.num_channels = num_channels
