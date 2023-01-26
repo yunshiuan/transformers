@@ -217,8 +217,8 @@ class ConfigTester(object):
             if attribute_used:
                 break
 
-        case_allowed = False
         if not attribute_used:
+            case_allowed = False
             for attribute in attributes:
                 if attribute == "layer_norm_eps" and self.config_class.__name__ in [
                     "BioGptConfig",
