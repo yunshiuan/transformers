@@ -206,6 +206,36 @@ class ConfigTester(object):
             errors = "\n".join([f"- {v[0]}: got {v[1]} instead of {v[2]}" for v in wrong_values])
             raise ValueError(f"The following keys were not properly set in the config:\n{errors}")
 
+    def _check_attribute_being_used(self, attributes, modeling_sources):
+
+        attribute_used = False
+        for attribute in attributes:
+
+            for modeling_source in modeling_sources:
+                if f"config.{attribute}" in modeling_source or f'getattr(config, "{x}"' in modeling_source:
+                    attribute_used = True
+                    break
+
+
+            if not attribute_used:
+                if attribute == "layer_norm_eps" and self.config_class.__name__ in ["BioGptConfig", "CLIPConfig", "CLIPSegConfig", "GLPNConfig", "GroupViTConfig", "LxmertConfig", "OwlViTConfig", "SegformerConfig", "XCLIPConfig"]:
+                    continue
+                # DPR has `self.bert` and the config has to be able to initialize a BERT model.
+                if attribute == "vocab_size" and self.config_class.__name__ in ["DPRConfig"]:
+                    continue
+                if attribute.endswith("_token_id"):
+                    continue
+                if attribute in ["bos_index", "eos_index", "pad_index", "unk_index", "mask_index"]:
+                    continue
+                if attribute in ["langs"] and self.config_class.__name__ in ["FSMTConfig"]:
+                    continue
+                if attribute in ["attention_types"] and self.config_class.__name__ in ["GPTNeoConfig"]:
+                    continue
+
+
+
+        raise ValueError(f"config.{x} not in the source.")
+
     def check_config_attributes_being_used(self):
         signature = dict(inspect.signature(self.config_class.__init__).parameters)
         parameter_names = [x for x in list(signature.keys()) if x not in ["self", "kwargs"]]
@@ -215,31 +245,22 @@ class ConfigTester(object):
             reversed_attribute_map = {v: k for k, v in self.config_class.attribute_map.items()}
 
         config_source_file = inspect.getsourcefile(self.config_class)
-        modeling_path = config_source_file.replace("configuration_", "modeling_")
-        with open(modeling_path) as fp:
-            modeling_source = fp.read()
-            for config_param in parameter_names:
-                attribute_to_check = [config_param]
-                # some configuration classes have non-empty `attribute_map`, and both names could be used in the
-                # corresponding modeling files. As long as one of them appears, it is fine.
-                if config_param in reversed_attribute_map:
-                    attribute_to_check.append(reversed_attribute_map[config_param])
 
-                if f"config.{x}" not in modeling_source and f'getattr(config, "{x}"' not in modeling_source:
-                    if x == "layer_norm_eps" and self.config_class.__name__ in ["BioGptConfig", "CLIPConfig", "CLIPSegConfig", "GLPNConfig", "GroupViTConfig", "LxmertConfig", "OwlViTConfig", "SegformerConfig", "XCLIPConfig"]:
-                        continue
-                    # DPR has `self.bert` and the config has to be able to initialize a BERT model.
-                    if x == "vocab_size" and self.config_class.__name__ in ["DPRConfig"]:
-                        continue
-                    if x.endswith("_token_id"):
-                        continue
-                    if x in ["bos_index", "eos_index", "pad_index", "unk_index", "mask_index"]:
-                        continue
-                    if x in ["langs"] and self.config_class.__name__ in ["FSMTConfig"]:
-                        continue
-                    if x in ["attention_types"] and self.config_class.__name__ in ["GPTNeoConfig"]:
-                        continue
-                    raise ValueError(f"config.{x} not in the source.")
+        # Let's check against all frameworks: as long as one framework uses an attribute, we are good.
+        modeling_paths = [config_source_file.replace("configuration_", f"modeling_{backend}") for backend in ["", "tf", "flax"]]
+        modeling_sources = []
+        for path in modeling_paths:
+            if os.path.isfile(path):
+                with open(path) as fp:
+                    modeling_sources.append(fp.read())
+
+        for config_param in parameter_names:
+            attributes = [config_param]
+            # some configuration classes have non-empty `attribute_map`, and both names could be used in the
+            # corresponding modeling files. As long as one of them appears, it is fine.
+            if config_param in reversed_attribute_map:
+                attributes.append(reversed_attribute_map[config_param])
+            self._check_attribute_being_used(attributes, modeling_sources)
 
     def run_common_tests(self):
         # self.create_and_test_config_common_properties()
