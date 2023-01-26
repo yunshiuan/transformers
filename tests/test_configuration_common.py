@@ -210,11 +210,21 @@ class ConfigTester(object):
         signature = dict(inspect.signature(self.config_class.__init__).parameters)
         parameter_names = [x for x in list(signature.keys()) if x not in ["self", "kwargs"]]
 
+        reversed_attribute_map = {}
+        if len(self.config_class.attribute_map) > 0:
+            reversed_attribute_map = {v: k for k, v in self.config_class.attribute_map.items()}
+
         config_source_file = inspect.getsourcefile(self.config_class)
         modeling_path = config_source_file.replace("configuration_", "modeling_")
         with open(modeling_path) as fp:
             modeling_source = fp.read()
-            for x in parameter_names:
+            for config_param in parameter_names:
+                attribute_to_check = [config_param]
+                # some configuration classes have non-empty `attribute_map`, and both names could be used in the
+                # corresponding modeling files. As long as one of them appears, it is fine.
+                if config_param in reversed_attribute_map:
+                    attribute_to_check.append(reversed_attribute_map[config_param])
+
                 if f"config.{x}" not in modeling_source and f'getattr(config, "{x}"' not in modeling_source:
                     if x == "layer_norm_eps" and self.config_class.__name__ in ["BioGptConfig", "CLIPConfig", "CLIPSegConfig", "GLPNConfig", "GroupViTConfig", "LxmertConfig", "OwlViTConfig", "SegformerConfig", "XCLIPConfig"]:
                         continue
