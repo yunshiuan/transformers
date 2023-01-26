@@ -210,31 +210,42 @@ class ConfigTester(object):
 
         attribute_used = False
         for attribute in attributes:
-
             for modeling_source in modeling_sources:
                 if f"config.{attribute}" in modeling_source or f'getattr(config, "{x}"' in modeling_source:
                     attribute_used = True
                     break
+            if attribute_used:
+                break
 
-
-            if not attribute_used:
-                if attribute == "layer_norm_eps" and self.config_class.__name__ in ["BioGptConfig", "CLIPConfig", "CLIPSegConfig", "GLPNConfig", "GroupViTConfig", "LxmertConfig", "OwlViTConfig", "SegformerConfig", "XCLIPConfig"]:
-                    continue
+        case_allowed = False
+        if not attribute_used:
+            for attribute in attributes:
+                if attribute == "layer_norm_eps" and self.config_class.__name__ in [
+                    "BioGptConfig",
+                    "CLIPConfig",
+                    "CLIPSegConfig",
+                    "GLPNConfig",
+                    "GroupViTConfig",
+                    "LxmertConfig",
+                    "OwlViTConfig",
+                    "SegformerConfig",
+                    "XCLIPConfig",
+                ]:
+                    case_allowed = True
                 # DPR has `self.bert` and the config has to be able to initialize a BERT model.
                 if attribute == "vocab_size" and self.config_class.__name__ in ["DPRConfig"]:
-                    continue
+                    case_allowed = True
                 if attribute.endswith("_token_id"):
-                    continue
+                    case_allowed = True
                 if attribute in ["bos_index", "eos_index", "pad_index", "unk_index", "mask_index"]:
-                    continue
+                    case_allowed = True
                 if attribute in ["langs"] and self.config_class.__name__ in ["FSMTConfig"]:
-                    continue
+                    case_allowed = True
                 if attribute in ["attention_types"] and self.config_class.__name__ in ["GPTNeoConfig"]:
-                    continue
+                    case_allowed = True
 
-
-
-        raise ValueError(f"config.{x} not in the source.")
+        if not (attribute_used or case_allowed):
+            raise ValueError(f"config.{attribute_used} (or its variant names) is/are not used in the modeling files.")
 
     def check_config_attributes_being_used(self):
         signature = dict(inspect.signature(self.config_class.__init__).parameters)
