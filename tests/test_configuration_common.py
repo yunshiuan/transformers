@@ -222,14 +222,17 @@ class ConfigTester(object):
             for attribute in attributes:
                 if attribute == "layer_norm_eps" and self.config_class.__name__ in [
                     "BioGptConfig",
-                    "CLIPConfig",
-                    "CLIPSegConfig",
+                    "CLIPTextConfig",
+                    "CLIPVisionConfig",
+                    "CLIPSegTextConfig",
+                    "CLIPSegVisionConfig",
                     "GLPNConfig",
                     "GroupViTConfig",
                     "LxmertConfig",
-                    "OwlViTConfig",
+                    "OwlViTTextConfig",
+                    "OwlViTVisionConfig",
                     "SegformerConfig",
-                    "XCLIPConfig",
+                    "XCLIPTextConfig",
                 ]:
                     case_allowed = True
                 # DPR has `self.bert` and the config has to be able to initialize a BERT model.
