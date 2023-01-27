@@ -1567,6 +1567,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         push_to_hub: bool = False,
         max_shard_size: Union[int, str] = "10GB",
         safe_serialization: bool = False,
+        variant: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -1604,6 +1605,8 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
 
             safe_serialization (`bool`, *optional*, defaults to `False`):
                 Whether to save the model using `safetensors` or the traditional PyTorch way (that uses `pickle`).
+            variant (`str`, *optional*):
+                If specified, weights are saved with a suffix as defined by `variant`.
 
             kwargs:
                 Additional key word arguments passed along to the [`~utils.PushToHubMixin.push_to_hub`] method.
@@ -1674,7 +1677,12 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                     del state_dict[ignore_key]
 
         # Shard the model if it is too big.
-        weights_name = SAFE_WEIGHTS_NAME if safe_serialization else WEIGHTS_NAME
+        variant_suffix = f".{variant}" if variant is not None else ""
+        if safe_serialization:
+            weights_name = SAFE_WEIGHTS_NAME + variant_suffix
+        else:
+            weights_name = WEIGHTS_NAME + variant_suffix
+
         shards, index = shard_checkpoint(state_dict, max_shard_size=max_shard_size, weights_name=weights_name)
 
         # Clean the folder from a previous save
@@ -1701,9 +1709,10 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 save_function(shard, os.path.join(save_directory, shard_file))
 
         if index is None:
-            logger.info(f"Model weights saved in {os.path.join(save_directory, WEIGHTS_NAME)}")
+            logger.info(f"Model weights saved in {os.path.join(save_directory, WEIGHTS_NAME + variant_suffix)}")
         else:
             save_index_file = SAFE_WEIGHTS_INDEX_NAME if safe_serialization else WEIGHTS_INDEX_NAME
+            save_index_file = save_index_file + variant_suffix
             save_index_file = os.path.join(save_directory, save_index_file)
             # Save the index as well
             with open(save_index_file, "w", encoding="utf-8") as f:
@@ -1927,6 +1936,23 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
             subfolder (`str`, *optional*, defaults to `""`):
                 In case the relevant files are located inside a subfolder of the model repo on huggingface.co, you can
                 specify the folder name here.
+            variant (`str`, *optional*):
+                If specified load weights with the `variant` suffix. If no weights with the `variant` suffix are
+                available an error is thrown.
+
+                <Tip>
+
+                Passing `variant` is useful to load weights serialized in float16. *E.g.*:
+
+                ```python
+                from transformers import AutoModelForCausalLM
+
+                model = AutoModelForCausalLM.from_pretrained("EleutherAI/gpt-j-6B", variant="float16")
+                ```
+
+                will download model weights saved in float16 precision with the name `pytorch_model.bin.float16`.
+
+                </Tip>
 
             kwargs (remaining dictionary of keyword arguments, *optional*):
                 Can be used to update the configuration object (after it being loaded) and initiate the model (e.g.,
@@ -2013,6 +2039,7 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         load_in_8bit_skip_modules = kwargs.pop("load_in_8bit_skip_modules", None)
         subfolder = kwargs.pop("subfolder", "")
         commit_hash = kwargs.pop("_commit_hash", None)
+        variant = kwargs.pop("variant", None)
 
         if trust_remote_code is True:
             logger.warning(
@@ -2108,53 +2135,56 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         keep_in_fp32_modules = None
         use_keep_in_fp32_modules = False
 
+        # `variant` will be passed as suffix to weight names, if left None we can transform it to ""
+        variant_suffix = f".{variant}" if variant is not None else ""
+
         if pretrained_model_name_or_path is not None:
             pretrained_model_name_or_path = str(pretrained_model_name_or_path)
             is_local = os.path.isdir(pretrained_model_name_or_path)
             if is_local:
-                if from_tf and os.path.isfile(
-                    os.path.join(pretrained_model_name_or_path, subfolder, TF_WEIGHTS_NAME + ".index")
-                ):
+
+                def get_local_path(file_name):
+                    return os.path.join(pretrained_model_name_or_path, subfolder, file_name)
+
+                tf_weights_1_path = get_local_path(TF_WEIGHTS_NAME + ".index")
+                tf2_weights_2_path = get_local_path(TF2_WEIGHTS_NAME)
+                flax_weights_path = get_local_path(FLAX_WEIGHTS_NAME)
+                safetensors_weights_path = get_local_path(SAFE_WEIGHTS_NAME) + variant_suffix
+                safetensors_weights_index_path = get_local_path(SAFE_WEIGHTS_INDEX_NAME) + variant_suffix
+                pytorch_weights_path = get_local_path(WEIGHTS_NAME) + variant_suffix
+                pytorch_weights_index_path = get_local_path(WEIGHTS_INDEX_NAME) + variant_suffix
+
+                if from_tf and os.path.isfile(tf_weights_1_path):
                     # Load from a TF 1.0 checkpoint in priority if from_tf
-                    archive_file = os.path.join(pretrained_model_name_or_path, subfolder, TF_WEIGHTS_NAME + ".index")
-                elif from_tf and os.path.isfile(
-                    os.path.join(pretrained_model_name_or_path, subfolder, TF2_WEIGHTS_NAME)
-                ):
+                    archive_file = tf_weights_1_path
+                elif from_tf and tf2_weights_2_path:
                     # Load from a TF 2.0 checkpoint in priority if from_tf
-                    archive_file = os.path.join(pretrained_model_name_or_path, subfolder, TF2_WEIGHTS_NAME)
-                elif from_flax and os.path.isfile(
-                    os.path.join(pretrained_model_name_or_path, subfolder, FLAX_WEIGHTS_NAME)
-                ):
+                    archive_file = tf2_weights_2_path
+                elif from_flax and os.path.isfile(flax_weights_path):
                     # Load from a Flax checkpoint in priority if from_flax
-                    archive_file = os.path.join(pretrained_model_name_or_path, subfolder, FLAX_WEIGHTS_NAME)
-                elif is_safetensors_available() and os.path.isfile(
-                    os.path.join(pretrained_model_name_or_path, subfolder, SAFE_WEIGHTS_NAME)
-                ):
+                    archive_file = flax_weights_path
+                elif is_safetensors_available() and os.path.isfile(safetensors_weights_path):
                     # Load from a safetensors checkpoint
-                    archive_file = os.path.join(pretrained_model_name_or_path, subfolder, SAFE_WEIGHTS_NAME)
-                elif is_safetensors_available() and os.path.isfile(
-                    os.path.join(pretrained_model_name_or_path, subfolder, SAFE_WEIGHTS_INDEX_NAME)
-                ):
+                    archive_file = safetensors_weights_path
+                elif is_safetensors_available() and os.path.isfile(safetensors_weights_index_path):
                     # Load from a sharded safetensors checkpoint
-                    archive_file = os.path.join(pretrained_model_name_or_path, subfolder, SAFE_WEIGHTS_INDEX_NAME)
+                    archive_file = safetensors_weights_index_path
                     is_sharded = True
-                elif os.path.isfile(os.path.join(pretrained_model_name_or_path, subfolder, WEIGHTS_NAME)):
+                elif os.path.isfile(pytorch_weights_path):
                     # Load from a PyTorch checkpoint
-                    archive_file = os.path.join(pretrained_model_name_or_path, subfolder, WEIGHTS_NAME)
-                elif os.path.isfile(os.path.join(pretrained_model_name_or_path, subfolder, WEIGHTS_INDEX_NAME)):
+                    archive_file = pytorch_weights_path
+                elif os.path.isfile(pytorch_weights_index_path):
                     # Load from a sharded PyTorch checkpoint
-                    archive_file = os.path.join(pretrained_model_name_or_path, subfolder, WEIGHTS_INDEX_NAME)
+                    archive_file = pytorch_weights_index_path
                     is_sharded = True
                 # At this stage we don't have a weight file so we will raise an error.
-                elif os.path.isfile(
-                    os.path.join(pretrained_model_name_or_path, subfolder, TF_WEIGHTS_NAME + ".index")
-                ) or os.path.isfile(os.path.join(pretrained_model_name_or_path, subfolder, TF2_WEIGHTS_NAME)):
+                elif os.path.isfile(tf_weights_1_path) or os.path.isfile(tf2_weights_2_path):
                     raise EnvironmentError(
                         f"Error no file named {WEIGHTS_NAME} found in directory {pretrained_model_name_or_path} but "
                         "there is a file for TensorFlow weights. Use `from_tf=True` to load this model from those "
                         "weights."
                     )
-                elif os.path.isfile(os.path.join(pretrained_model_name_or_path, subfolder, FLAX_WEIGHTS_NAME)):
+                elif os.path.isfile(flax_weights_path):
                     raise EnvironmentError(
                         f"Error no file named {WEIGHTS_NAME} found in directory {pretrained_model_name_or_path} but "
                         "there is a file for Flax weights. Use `from_flax=True` to load this model from those "
@@ -2186,9 +2216,9 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 elif from_flax:
                     filename = FLAX_WEIGHTS_NAME
                 elif is_safetensors_available():
-                    filename = SAFE_WEIGHTS_NAME
+                    filename = SAFE_WEIGHTS_NAME + variant_suffix
                 else:
-                    filename = WEIGHTS_NAME
+                    filename = WEIGHTS_NAME + variant_suffix
 
                 try:
                     # Load from URL or cache if already cached
@@ -2209,23 +2239,25 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
 
                     # Since we set _raise_exceptions_for_missing_entries=False, we don't get an exception but a None
                     # result when internet is up, the repo and revision exist, but the file does not.
-                    if resolved_archive_file is None and filename == SAFE_WEIGHTS_NAME:
+                    if resolved_archive_file is None and (filename == SAFE_WEIGHTS_NAME + variant_suffix):
                         # Maybe the checkpoint is sharded, we try to grab the index name in this case.
                         resolved_archive_file = cached_file(
-                            pretrained_model_name_or_path, SAFE_WEIGHTS_INDEX_NAME, **cached_file_kwargs
+                            pretrained_model_name_or_path,
+                            SAFE_WEIGHTS_INDEX_NAME + variant_suffix,
+                            **cached_file_kwargs,
                         )
                         if resolved_archive_file is not None:
                             is_sharded = True
                         else:
                             # This repo has no safetensors file of any kind, we switch to PyTorch.
-                            filename = WEIGHTS_NAME
+                            filename = WEIGHTS_NAME + variant_suffix
                             resolved_archive_file = cached_file(
-                                pretrained_model_name_or_path, WEIGHTS_NAME, **cached_file_kwargs
+                                pretrained_model_name_or_path, WEIGHTS_NAME + variant_suffix, **cached_file_kwargs
                             )
-                    if resolved_archive_file is None and filename == WEIGHTS_NAME:
+                    if resolved_archive_file is None and filename == (WEIGHTS_NAME + variant_suffix):
                         # Maybe the checkpoint is sharded, we try to grab the index name in this case.
                         resolved_archive_file = cached_file(
-                            pretrained_model_name_or_path, WEIGHTS_INDEX_NAME, **cached_file_kwargs
+                            pretrained_model_name_or_path, WEIGHTS_INDEX_NAME + variant_suffix, **cached_file_kwargs
                         )
                         if resolved_archive_file is not None:
                             is_sharded = True
@@ -2240,19 +2272,20 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                         if has_file(pretrained_model_name_or_path, TF2_WEIGHTS_NAME, **has_file_kwargs):
                             raise EnvironmentError(
                                 f"{pretrained_model_name_or_path} does not appear to have a file named"
-                                f" {WEIGHTS_NAME} but there is a file for TensorFlow weights. Use `from_tf=True` to"
-                                " load this model from those weights."
+                                f" {WEIGHTS_NAME + variant_suffix} but there is a file for TensorFlow weights. Use"
+                                " `from_tf=True` to load this model from those weights."
                             )
                         elif has_file(pretrained_model_name_or_path, FLAX_WEIGHTS_NAME, **has_file_kwargs):
                             raise EnvironmentError(
                                 f"{pretrained_model_name_or_path} does not appear to have a file named"
-                                f" {WEIGHTS_NAME} but there is a file for Flax weights. Use `from_flax=True` to load"
-                                " this model from those weights."
+                                f" {WEIGHTS_NAME + variant_suffix} but there is a file for Flax weights. Use"
+                                " `from_flax=True` to load this model from those weights."
                             )
                         else:
                             raise EnvironmentError(
-                                f"{pretrained_model_name_or_path} does not appear to have a file named {WEIGHTS_NAME},"
-                                f" {TF2_WEIGHTS_NAME}, {TF_WEIGHTS_NAME} or {FLAX_WEIGHTS_NAME}."
+                                f"{pretrained_model_name_or_path} does not appear to have a file named"
+                                f" {WEIGHTS_NAME + variant_suffix}, {TF2_WEIGHTS_NAME}, {TF_WEIGHTS_NAME} or"
+                                f" {FLAX_WEIGHTS_NAME}."
                             )
                 except EnvironmentError:
                     # Raise any environment error raise by `cached_file`. It will have a helpful error message adapted
@@ -2264,8 +2297,8 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                         f"Can't load the model for '{pretrained_model_name_or_path}'. If you were trying to load it"
                         " from 'https://huggingface.co/models', make sure you don't have a local directory with the"
                         f" same name. Otherwise, make sure '{pretrained_model_name_or_path}' is the correct path to a"
-                        f" directory containing a file named {WEIGHTS_NAME}, {TF2_WEIGHTS_NAME}, {TF_WEIGHTS_NAME} or"
-                        f" {FLAX_WEIGHTS_NAME}."
+                        f" directory containing a file named {WEIGHTS_NAME + variant_suffix}, {TF2_WEIGHTS_NAME},"
+                        f" {TF_WEIGHTS_NAME} or {FLAX_WEIGHTS_NAME}."
                     )
 
             if is_local:
