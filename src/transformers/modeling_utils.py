@@ -2180,20 +2180,21 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 # At this stage we don't have a weight file so we will raise an error.
                 elif os.path.isfile(tf_weights_1_path) or os.path.isfile(tf2_weights_2_path):
                     raise EnvironmentError(
-                        f"Error no file named {WEIGHTS_NAME} found in directory {pretrained_model_name_or_path} but "
-                        "there is a file for TensorFlow weights. Use `from_tf=True` to load this model from those "
-                        "weights."
+                        f"Error no file named {WEIGHTS_NAME + variant_suffix} found in directory"
+                        f" {pretrained_model_name_or_path} but there is a file for TensorFlow weights. Use"
+                        " `from_tf=True` to load this model from those weights."
                     )
                 elif os.path.isfile(flax_weights_path):
                     raise EnvironmentError(
-                        f"Error no file named {WEIGHTS_NAME} found in directory {pretrained_model_name_or_path} but "
-                        "there is a file for Flax weights. Use `from_flax=True` to load this model from those "
-                        "weights."
+                        f"Error no file named {WEIGHTS_NAME + variant_suffix} found in directory"
+                        f" {pretrained_model_name_or_path} but there is a file for Flax weights. Use `from_flax=True`"
+                        " to load this model from those weights."
                     )
                 else:
                     raise EnvironmentError(
-                        f"Error no file named {WEIGHTS_NAME}, {TF2_WEIGHTS_NAME}, {TF_WEIGHTS_NAME + '.index'} or "
-                        f"{FLAX_WEIGHTS_NAME} found in directory {pretrained_model_name_or_path}."
+                        f"Error no file named {WEIGHTS_NAME + variant_suffix}, {TF2_WEIGHTS_NAME},"
+                        f" {TF_WEIGHTS_NAME + '.index'} or {FLAX_WEIGHTS_NAME} found in directory"
+                        f" {pretrained_model_name_or_path}."
                     )
             elif os.path.isfile(os.path.join(subfolder, pretrained_model_name_or_path)):
                 archive_file = pretrained_model_name_or_path
