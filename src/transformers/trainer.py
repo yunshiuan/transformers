@@ -2130,6 +2130,8 @@ class Trainer:
                     # collect metrics
                     if metrics is not None:
                         metrics = metrics|metrics_this
+                    else:
+                        metrics = metrics_this
             else:
                 metrics = self.evaluate(ignore_keys=ignore_keys_for_eval)
             self._report_to_hp_search(trial, self.state.global_step, metrics)
