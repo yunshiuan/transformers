@@ -1763,6 +1763,9 @@ class Trainer:
 
             step = -1
             for step, inputs in enumerate(epoch_iterator):
+                # evalute before training if EvaluateLogSaveBeforeTrainingCallback is added to the callback list
+                # - only has effect if control.should_evaluate etc. are True
+                self._maybe_log_save_evaluate(tr_loss, model, trial, epoch,ignore_keys_for_eval)     
 
                 # Skip past any already trained steps if resuming training
                 if steps_trained_in_current_epoch > 0:
@@ -2108,8 +2111,9 @@ class Trainer:
 
             # reset tr_loss to zero
             tr_loss -= tr_loss
-
-            logs["loss"] = round(tr_loss_scalar / (self.state.global_step - self._globalstep_last_logged), 4)
+            # skip if it's evaluating before the start of the training
+            if self.state.global_step > 0:
+                logs["loss"] = round(tr_loss_scalar / (self.state.global_step - self._globalstep_last_logged), 4)
             logs["learning_rate"] = self._get_learning_rate()
 
             self._total_loss_scalar += tr_loss_scalar
