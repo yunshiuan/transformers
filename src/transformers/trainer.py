@@ -1931,8 +1931,10 @@ class Trainer:
             metrics["best_metric_{}".format(self.args.metric_for_best_model)] = self.state.best_metric
             best_model_step = int(re.search(r"checkpoint-(\d+)", self.state.best_model_checkpoint).group(1))
             metrics["best_model_step"] = best_model_step
-            metrics["best_model_epoch"] = best_model_step / self.state.max_steps
-        
+            # get the steps of each epoch
+            steps_per_epoch = self.state.max_steps / self.args.num_train_epochs            
+            metrics["best_model_epoch"] = best_model_step / steps_per_epoch
+
         self._memory_tracker.stop_and_update_metrics(metrics)
 
         self.log(metrics)
