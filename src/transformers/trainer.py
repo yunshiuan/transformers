@@ -1718,7 +1718,7 @@ class Trainer:
         model.zero_grad()
 
         self.control = self.callback_handler.on_train_begin(args, self.state, self.control)
-
+    
         # Skip the first epochs_trained epochs to get the random state of the dataloader at the right point.
         if not args.ignore_data_skip:
             for epoch in range(epochs_trained):
@@ -1813,7 +1813,7 @@ class Trainer:
                     # last step in epoch but step is always smaller than gradient_accumulation_steps
                     steps_in_epoch <= args.gradient_accumulation_steps
                     and (step + 1) == steps_in_epoch
-                ):
+                ):       
                     # Gradient clipping
                     if args.max_grad_norm is not None and args.max_grad_norm > 0 and not self.deepspeed:
                         # deepspeed does its own clipping
@@ -1921,9 +1921,18 @@ class Trainer:
         self.store_flos()
         metrics["total_flos"] = self.state.total_flos
         metrics["train_loss"] = train_loss
+        
 
         self.is_in_train = False
 
+        # log the best model metrics
+        if args.load_best_model_at_end and self.state.best_model_checkpoint is not None:
+            # - e.g., "best_metric_valiset_raw_f1_macro"=0.5
+            metrics["best_metric_{}".format(self.args.metric_for_best_model)] = self.state.best_metric
+            best_model_step = int(re.search(r"checkpoint-(\d+)", self.state.best_model_checkpoint).group(1))
+            metrics["best_model_step"] = best_model_step
+            metrics["best_model_epoch"] = best_model_step / self.state.max_steps
+        
         self._memory_tracker.stop_and_update_metrics(metrics)
 
         self.log(metrics)
