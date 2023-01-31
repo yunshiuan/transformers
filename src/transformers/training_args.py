@@ -541,6 +541,10 @@ class TrainingArguments:
             The mode to use in `torch.compile`. If set to any value, `torch_compile` will be set to `True`.
 
             Possible choices are `"default"`, `"reduce-overhead"` and `"max-autotune"`.
+        log_eval_save_before_training (`bool`, *optional*, defaults to `False`):
+            Whether to log, evaluate and save the model before training. This is useful to log the initial model and shows whether training indeed improves the performance.
+        log_best_model_metrics (`bool`, *optional*, defaults to `False`):
+            Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`.
     """
 
     framework = "pt"
@@ -1050,6 +1054,22 @@ class TrainingArguments:
             "choices": ["default", "reduce-overhead", "max-autotune"],
         },
     )
+    log_eval_save_before_training: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "Whether to log, evaluate and save the model before training. This is useful to log the initial model and shows whether training indeed improves the performance."
+            )
+        },
+    )
+    log_best_model_metrics: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`."
+            )
+        },
+    )    
 
     def __post_init__(self):
         # Handle --use_env option in torch.distributed.launch (local_rank not passed as an arg then).

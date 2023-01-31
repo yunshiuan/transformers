@@ -1425,7 +1425,7 @@ class Trainer:
                 dtype = torch.bfloat16
             if dtype is not None:
                 mixed_precision_policy = MixedPrecision(param_dtype=dtype, reduce_dtype=dtype, buffer_dtype=dtype)
-            if type(model) != FSDP:
+            if not isinstance(model, FSDP):
                 # XXX: Breaking the self.model convention but I see no way around it for now.
                 self.model = model = FSDP(
                     model,
@@ -1718,7 +1718,7 @@ class Trainer:
         model.zero_grad()
 
         self.control = self.callback_handler.on_train_begin(args, self.state, self.control)
-    
+
         # Skip the first epochs_trained epochs to get the random state of the dataloader at the right point.
         if not args.ignore_data_skip:
             for epoch in range(epochs_trained):
@@ -1764,8 +1764,9 @@ class Trainer:
             step = -1
             for step, inputs in enumerate(epoch_iterator):
                 # evalute before training if EvaluateLogSaveBeforeTrainingCallback is added to the callback list
-                # - only has effect if control.should_evaluate etc. are True
-                self._maybe_log_save_evaluate(tr_loss, model, trial, epoch,ignore_keys_for_eval)     
+                if args.log_eval_save_before_training:
+                    # - only has effect if control.should_evaluate etc. are True
+                    self._maybe_log_save_evaluate(tr_loss, model, trial, epoch, ignore_keys_for_eval)
 
                 # Skip past any already trained steps if resuming training
                 if steps_trained_in_current_epoch > 0:
@@ -1813,7 +1814,7 @@ class Trainer:
                     # last step in epoch but step is always smaller than gradient_accumulation_steps
                     steps_in_epoch <= args.gradient_accumulation_steps
                     and (step + 1) == steps_in_epoch
-                ):       
+                ):
                     # Gradient clipping
                     if args.max_grad_norm is not None and args.max_grad_norm > 0 and not self.deepspeed:
                         # deepspeed does its own clipping
@@ -1921,19 +1922,27 @@ class Trainer:
         self.store_flos()
         metrics["total_flos"] = self.state.total_flos
         metrics["train_loss"] = train_loss
-        
 
         self.is_in_train = False
 
         # log the best model metrics
-        if args.load_best_model_at_end and self.state.best_model_checkpoint is not None:
-            # - e.g., "best_metric_valiset_raw_f1_macro"=0.5
-            metrics["best_metric_{}".format(self.args.metric_for_best_model)] = self.state.best_metric
+        # - note: these metrics will be prefixed with "best/" in the wandb log because it's how 'integrations.WandbCallBack.on_log()' is implemented (modified by me)
+        if args.log_best_model_metrics and args.load_best_model_at_end and self.state.best_model_checkpoint is not None:
+            # get the metric used for selecting the best model
+            # - e.g., "best_valiset_raw_f1_macro"=0.5
+            metrics["best_criteria_{}".format(self.args.metric_for_best_model)] = self.state.best_metric
+            # get the step of the best model
             best_model_step = int(re.search(r"checkpoint-(\d+)", self.state.best_model_checkpoint).group(1))
-            metrics["best_model_step"] = best_model_step
+            metrics["best_step"] = best_model_step
             # get the steps of each epoch
-            steps_per_epoch = self.state.max_steps / self.args.num_train_epochs            
-            metrics["best_model_epoch"] = best_model_step / steps_per_epoch
+            steps_per_epoch = self.state.max_steps / self.args.num_train_epochs
+            # get the epoch of the best model
+            metrics["best_epoch"] = best_model_step / steps_per_epoch
+
+            # get other metrics of the best model
+            best_model_metrics = self._get_metrics_from_log_history(best_model_step)
+            for metric_name, metric_value in best_model_metrics.items():
+                metrics["best_{}".format(metric_name)] = metric_value
 
         self._memory_tracker.stop_and_update_metrics(metrics)
 
@@ -2144,7 +2153,7 @@ class Trainer:
                     )
                     # collect metrics
                     if metrics is not None:
-                        metrics = metrics|metrics_this
+                        metrics = metrics | metrics_this
                     else:
                         metrics = metrics_this
             else:
@@ -3689,3 +3698,16 @@ class Trainer:
             tensors = distributed_concat(tensors)
 
         return nested_numpify(tensors)
+
+    def _get_metrics_from_log_history(self, step) -> dict:
+        """
+        Get the metrics from the log history of the trainer given a specific step. Returns empty dictionary is the step is not logged.
+        """
+        metrics = {}
+        # loop over all the log history to find the corresponding step
+        for log in self.state.log_history:
+            if log["step"] == step:
+                for key in log.keys():
+                    if key.startswith("eval_"):
+                        metrics[key] = log[key]
+        return metrics
