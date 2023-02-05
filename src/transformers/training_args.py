@@ -545,6 +545,30 @@ class TrainingArguments:
             Whether to log, evaluate and save the model before training. This is useful to log the initial model and shows whether training indeed improves the performance.
         log_best_model_metrics (`bool`, *optional*, defaults to `False`):
             Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`.
+
+        Below are the parameters for logging only. These parameters will not be used for training or evaluation, and their only effect is to be logged (to wandb etc). This is useful for logging parameters that are not used in the model, but that you want to keep track of.
+
+        log_only_factor_upsample (`float`, *optional*, defaults to `0.0`):
+            Only used when logging. Whether to upsample such that the number of samples in each class is the same.
+            - match the size to N * majority class size
+                - 0 if no upsampling
+                - 1 if the majoruty class it not upsampled, and the other minority classes are upsampled to the same size as the majority class
+                - 2 if the majority class is upsampled twice, and the other minority classes are upsampled to twice the same size of the majority class
+        log_only_do_downsample (`bool`, *optional*, defaults to `False`):
+            Only used when logging. Whether to downsample such that the number of samples in each class is the same.
+            - match the size to the minority class.
+        log_only_use_weighted_loss (`bool`, *optional*, defaults to `False`):
+            Only used when logging. Whether to use the weighted loss function.
+        log_only_freeze_bert (`bool`, *optional*, defaults to `False`):
+            Only used when logging. Whether to freeze the BERT model while training (only train the final layer).
+        log_only_reinit_bert (`bool`, *optional*, defaults to `False`):
+            Only used when logging. Whether to re-initialize the top-N layers of the BERT model.
+        log_only_num_layers_reinit_bert (`int`, *optional*, defaults to `0`):
+            Only used when logging. The number of layers to re-initialize if `reinit_bert` is set to `True`.
+        log_only_version_data (`str`, *optional*, defaults to `""`):
+            Only used when logging. The version of the data used for training, evaluation, and prediction.
+        log_only_task (`str`, *optional*, defaults to `""`):
+            Only used when logging. The task performed with the dataset (e.g., "Q1", "Q2")
     """
 
     framework = "pt"
@@ -1069,7 +1093,92 @@ class TrainingArguments:
                 "Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`."
             )
         },
-    )    
+    )
+    log_only_factor_upsample: float = field(
+        default=0.0,
+        metadata={
+            "help": (
+                """
+                Only used when logging. Whether to upsample such that the number of samples in each class is the same.
+                - match the size to N * majority class size
+                    - 0 if no upsampling
+                    - 1 if the majoruty class it not upsampled, and the other minority classes are upsampled to the same size as the majority class
+                    - 2 if the majority class is upsampled twice, and the other minority classes are upsampled to twice the same size of the majority class
+                """
+            )
+        },
+    )
+    log_only_do_downsample: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                """
+                Only used when logging. Whether to downsample such that the number of samples in each class is the same.
+            - match the size to the minority class.
+                """
+            )
+        },
+    )
+    log_only_use_weighted_loss: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                """
+                Only used when logging. Whether to use the weighted loss function.
+                """
+            )
+        },
+    )
+    log_only_freeze_bert: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                """
+                Only used when logging. Whether to freeze the BERT model while training (only train the final layer).
+                """
+            )
+        },
+    )
+    log_only_reinit_bert: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                """
+                Only used when logging. Whether to re-initialize the top-N layers of the BERT model.
+                """
+            )
+        },
+    )
+    log_only_num_layers_reinit_bert: int = field(
+        default=0,
+        metadata={
+            "help": (
+                """
+                Only used when logging. The number of layers to re-initialize if `reinit_bert` is set to `True`.
+                """
+            )
+        },
+    )
+    log_only_version_data: str = field(
+        default="",
+        metadata={
+            "help": (
+                """
+                Only used when logging.
+                """
+            )
+        },
+    )
+    log_only_task: str = field(
+        default="",
+        metadata={
+            "help": (
+                """
+                Only used when logging. The task performed with the dataset (e.g., "Q1", "Q2")
+                """
+            )
+        },
+    )
 
     def __post_init__(self):
         # Handle --use_env option in torch.distributed.launch (local_rank not passed as an arg then).
