@@ -547,7 +547,8 @@ class TrainingArguments:
             Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`.
 
         Below are the parameters for logging only. These parameters will not be used for training or evaluation, and their only effect is to be logged (to wandb etc). This is useful for logging parameters that are not used in the model, but that you want to keep track of.
-
+        log_only_encoder_name (`str`, *optional*, defaults to `""`):
+            Only used when logging. The name of the encoder.
         log_only_factor_upsample (`float`, *optional*, defaults to `0.0`):
             Only used when logging. Whether to upsample such that the number of samples in each class is the same.
             - match the size to N * majority class size
@@ -1091,6 +1092,16 @@ class TrainingArguments:
         metadata={
             "help": (
                 "Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`."
+            )
+        },
+    )
+    log_only_encoder_name: Optional[str] = field(
+        default="",
+        metadata={
+            "help": (
+                """
+                Only used when logging. The name of the encoder.
+                """
             )
         },
     )
