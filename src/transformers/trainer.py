@@ -2475,7 +2475,15 @@ class Trainer:
         """
         if self.state.epoch is not None:
             logs["epoch"] = round(self.state.epoch, 2)
-
+        # add suffix 
+        if self.args.log_suffix:
+            new_logs = dict()
+            for k, v in logs.items():
+                if self._check_if_metric_should_suffix(k):
+                    new_logs[f"{k}_{self.args.log_suffix}"] = v
+                else:
+                    new_logs[k] = v
+            logs = new_logs
         output = {**logs, **{"step": self.state.global_step}}
         self.state.log_history.append(output)
         self.control = self.callback_handler.on_log(self.args, self.state, self.control, logs)
@@ -3711,3 +3719,17 @@ class Trainer:
                     if key.startswith("eval_"):
                         metrics[key] = log[key]
         return metrics
+    def _check_if_metric_should_suffix(self,metric) -> bool:
+        """
+        Args:
+            metric (`str`):
+                The name of the metric.
+
+        Returns:
+            bool: True if the metric should be suffixed, False otherwise.
+        """
+        # don't suffix if specified
+        for metric_no_suffix in self.args.log_metric_no_suffix:
+            if metric_no_suffix in metric:
+                return False
+        return True

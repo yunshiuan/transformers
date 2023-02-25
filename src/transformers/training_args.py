@@ -545,6 +545,10 @@ class TrainingArguments:
             Whether to log, evaluate and save the model before training. This is useful to log the initial model and shows whether training indeed improves the performance.
         log_best_model_metrics (`bool`, *optional*, defaults to `False`):
             Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`.
+        log_suffix (`str`, *optional*, defaults to ""):
+            The suffix to append to the metrics, which will be logged to the list of integrations (e.g. wandb). This is useful when there are repeated measurements for a given run (e.g., gda_psuedo_*), where a new model is trained at each iteration. In that case, the suffix can record the index of iteration in the training process. This will be used by `Trainer.log()`.
+        log_metric_no_suffix (`List(str)`, *optional*, defaults to `[]`):
+            The list of metrics that should not have the suffix appended to them. The strings can ba substrings of the metric names, and the suffix will not be appended to them (e.g., 'target'). This is used only when `log_suffix` is not empty. 
 
         Below are the parameters for logging only. These parameters will not be used for training or evaluation, and their only effect is to be logged (to wandb etc). This is useful for logging parameters that are not used in the model, but that you want to keep track of.
         log_only_encoder_name (`str`, *optional*, defaults to `""`):
@@ -1095,7 +1099,26 @@ class TrainingArguments:
             )
         },
     )
-    log_only_encoder_name: Optional[str] = field(
+    log_suffix: str = field(
+        default="",
+        metadata={
+            "help": (
+                "The suffix to append to the metrics, which will be logged to the list of integrations (e.g. wandb). This is useful when there are repeated measurements for a given run (e.g., gda_psuedo_*), where a new model is trained at each iteration. In that case, the suffix can record the index of iteration in the training process. This will be used by `Trainer.log()`."
+            )
+        },
+    )
+    log_metric_no_suffix: Optional[List[str]] = field(
+        default=None, 
+        metadata={
+            "help": (
+                "The list of metrics that should not have the suffix appended to them. The strings can ba substrings of the metric names, and the suffix will not be appended to them (e.g., 'target'). This is used only when `log_suffix` is not empty."
+            )
+        },
+    )
+
+
+    # Below are the parameters for logging only.
+    log_only_encoder_name: str = field(
         default="",
         metadata={
             "help": (
