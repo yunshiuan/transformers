@@ -3730,6 +3730,8 @@ class Trainer:
         """
         # don't suffix if specified
         for metric_no_suffix in self.args.log_metric_no_suffix:
-            if metric_no_suffix in metric:
+            regexp = re.compile(metric_no_suffix)
+            if regexp.search(metric) is not None:
+            # if metric_no_suffix in metric:
                 return False
         return True
