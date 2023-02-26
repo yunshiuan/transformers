@@ -1108,7 +1108,7 @@ class TrainingArguments:
         },
     )
     log_metric_no_suffix: Optional[List[str]] = field(
-        default=["^epoch"],
+        default=("^epoch"),
         metadata={
             "help": (
                 "The list of regex patterns of the metrics that should not have the suffix appended to them. The strings are regex patterns of the metric names, and the suffix will not be appended to them (e.g., 'target'). This is used only when `log_suffix` is not empty.  Note that '^epoch$' is by default excluded from the suffix."
