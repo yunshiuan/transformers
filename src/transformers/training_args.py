@@ -546,7 +546,7 @@ class TrainingArguments:
         log_best_model_metrics (`bool`, *optional*, defaults to `False`):
             Whether to log the best model metrics after training. Only makes sense if `load_best_model_at_end=True`.
         log_suffix (`str`, *optional*, defaults to ""):
-            The suffix to append to the metrics, which will be logged to the list of integrations (e.g. wandb). This is useful when there are repeated measurements for a given run (e.g., gda_psuedo_*), where a new model is trained at each iteration. In that case, the suffix can record the index of iteration in the training process. This will be used by `Trainer.log()`.
+            The suffix to append to the metrics, which will be logged to the list of integrations (e.g. wandb). This is useful when there are repeated measurements for a given run (e.g., gda_pseudo_*), where a new model is trained at each iteration. In that case, the suffix can record the index of iteration in the training process. This will be used by `Trainer.log()`.
         log_metric_no_suffix (`List(str)`, *optional*, defaults to `["^epoch"]`):
             The list of regex patterns of the metrics that should not have the suffix appended to them. The strings are regex patterns of the metric names, and the suffix will not be appended to them (e.g., 'target'). This is used only when `log_suffix` is not empty.  Note that "^epoch$" is by default excluded from the suffix.
 
@@ -1103,7 +1103,7 @@ class TrainingArguments:
         default="",
         metadata={
             "help": (
-                "The suffix to append to the metrics, which will be logged to the list of integrations (e.g. wandb). This is useful when there are repeated measurements for a given run (e.g., gda_psuedo_*), where a new model is trained at each iteration. In that case, the suffix can record the index of iteration in the training process. This will be used by `Trainer.log()`."
+                "The suffix to append to the metrics, which will be logged to the list of integrations (e.g. wandb). This is useful when there are repeated measurements for a given run (e.g., gda_pseudo_*), where a new model is trained at each iteration. In that case, the suffix can record the index of iteration in the training process. This will be used by `Trainer.log()`."
             )
         },
     )
